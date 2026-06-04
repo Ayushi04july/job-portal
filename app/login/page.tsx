@@ -1,33 +1,48 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<"success" | "error">("success");
   const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setStatus(null);
 
-    const formData = new FormData(event.currentTarget);
-    const response = await fetch("/api/login", {
-      method: "POST",
-      body: formData,
-    });
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
-    const result = await response.json();
-    if (response.ok) {
-      setStatusType("success");
-      setStatus("Logged in successfully.");
-    } else {
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        setStatusType("success");
+        setStatus("Logged in successfully. Redirecting...");
+        const destination = result?.role === "recruiter" ? "/post-job" : "/jobs";
+        setTimeout(() => router.push(destination), 1500);
+      } else {
+        setStatusType("error");
+        setStatus(result?.error || "Unable to login. Please try again.");
+      }
+    } catch (error) {
       setStatusType("error");
-      setStatus(result?.error || "Unable to login. Please try again.");
+      setStatus(
+        error instanceof Error
+          ? `Login failed: ${error.message}`
+          : "Login failed due to a network error."
+      );
+    } finally {
+      setSubmitting(false);
     }
-
-    setSubmitting(false);
   }
 
   return (

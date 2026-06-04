@@ -1,3 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+
 const companies = [
   "Google",
   "Microsoft",
@@ -22,6 +27,20 @@ const highlights = [
 ];
 
 export default function Home() {
+  const [authenticated, setAuthenticated] = useState(false);
+
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const response = await fetch("/api/auth");
+        setAuthenticated(response.ok);
+      } catch {
+        setAuthenticated(false);
+      }
+    }
+    checkAuth();
+  }, []);
+
   return (
     <div className="page-container">
       <section className="hero-panel">
@@ -33,10 +52,25 @@ export default function Home() {
             land the job that fits your lifestyle.
           </p>
           <div className="hero-actions">
-            <a className="cta-button" href="/jobs">
-              Explore Jobs
-            </a>
-            <button className="secondary-button">Post a job</button>
+            {authenticated ? (
+              <>
+                <Link href="/jobs" className="cta-button">
+                  Explore Jobs
+                </Link>
+                <Link href="/post-job" className="secondary-button">
+                  Post a job
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="cta-button">
+                  Login to Explore Jobs
+                </Link>
+                <Link href="/register" className="secondary-button">
+                  Register Now
+                </Link>
+              </>
+            )}
           </div>
         </div>
 

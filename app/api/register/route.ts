@@ -19,29 +19,49 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid registration role." }, { status: 400 });
   }
 
-  const client = await clientPromise;
-  const db = client.db(process.env.MONGODB_DB ?? "job-portal");
-  const users = db.collection("users");
+  try {
+    const client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB ?? "job-portal");
+    const users = db.collection("users");
 
-  const existing = await users.findOne({ email: email.toLowerCase() });
-  if (existing) {
-    return NextResponse.json({ error: "Email is already registered." }, { status: 409 });
+    const existing = await users.findOne({ email: email.toLowerCase() });
+    if (existing) {
+      return NextResponse.json({ error: "Email is already registered." }, { status: 409 });
+    }
+
+    const salt = randomBytes(16).toString("hex");
+    const hashedPassword = pbkdf2Sync(password, salt, 310000, 32, "sha256").toString("hex");
+
+    const userRecord = {
+      name,
+      role,
+      email: email.toLowerCase(),
+      passwordHash: hashedPassword,
+      passwordSalt: salt,
+      createdAt: new Date(),
+      status: "active",
+      profileComplete: false,
+    };
+
+    const result = await users.insertOne(userRecord);
+
+    if (!result.insertedId) {
+      throw new Error("Failed to create user.");
+    }
+
+    return NextResponse.json(
+      { success: true, userId: result.insertedId.toString() },
+      { status: 201 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? `Registration failed: ${error.message}`
+            : "Registration failed due to an unexpected error.",
+      },
+      { status: 500 }
+    );
   }
-
-  const salt = randomBytes(16).toString("hex");
-  const hashedPassword = pbkdf2Sync(password, salt, 310000, 32, "sha256").toString("hex");
-
-  const result = await users.insertOne({
-    name,
-    role,
-    email: email.toLowerCase(),
-    passwordHash: hashedPassword,
-    passwordSalt: salt,
-    createdAt: new Date(),
-  });
-
-  return NextResponse.json(
-    { success: true, userId: result.insertedId.toString() },
-    { status: 201 }
-  );
 }

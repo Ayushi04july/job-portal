@@ -12,23 +12,34 @@ export default function RegisterPage() {
     setSubmitting(true);
     setStatus(null);
 
-    const formData = new FormData(event.currentTarget);
-    const response = await fetch("/api/register", {
-      method: "POST",
-      body: formData,
-    });
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
-    const result = await response.json();
-    if (response.ok) {
-      setStatusType("success");
-      setStatus("Your account was created successfully.");
-      event.currentTarget.reset();
-    } else {
+    try {
+      const response = await fetch("/api/register", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        setStatusType("success");
+        setStatus("Your account was created successfully.");
+        form.reset();
+      } else {
+        setStatusType("error");
+        setStatus(result?.error || "Unable to register. Please try again.");
+      }
+    } catch (error) {
       setStatusType("error");
-      setStatus(result?.error || "Unable to register. Please try again.");
+      setStatus(
+        error instanceof Error
+          ? `Registration failed: ${error.message}`
+          : "Registration failed due to a network error."
+      );
+    } finally {
+      setSubmitting(false);
     }
-
-    setSubmitting(false);
   }
 
   return (
